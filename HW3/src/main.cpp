@@ -65,8 +65,8 @@ int main() {
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		ImGui::Begin("Edit color", &ImGui, ImGuiWindowFlags_MenuBar);
-		ImGui::ColorEdit3("Color", (float*)&TriangleColor);
+		ImGui::Begin("Edit Radius", &ImGui, ImGuiWindowFlags_MenuBar);
+		ImGui::ColorEdit3("Radius", (float*)&TriangleColor);
 		ImGui::Checkbox("Triangle", &showTriangle);
 		ImGui::Checkbox("Circle", &showCircle);
 		ImGui::Checkbox("ChangeRadius", &changeRadius);
@@ -110,3 +110,4 @@ void processInput(GLFWwindow *window)
 	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, true);
 }
+

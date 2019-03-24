@@ -176,7 +176,7 @@ int BresenHam::bresenHamCircle(int x, int y, int radius) {
 	int d = 1 - radius;
 	int x1 = 0, y1 = radius;
 	int index = 0;
-	while (y1 > x1) {
+	while (x1 < y1) {
 		float temp1 = (float)x1 / 500, temp2 = (float)y1 / 500;
 		xPos[index] = temp1 + x;
 		yPos[index++] = temp2 + y;
