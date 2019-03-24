@@ -1,4 +1,5 @@
 #include "BresenHam.h"
+#include <algorithm>
 const int width = 800;
 const int height = 800;
 BresenHam::BresenHam(){
@@ -206,6 +207,52 @@ int BresenHam::bresenHamCircle(int x, int y, int radius) {
 		x1++;
 	}
 	return index;
+}
+void BresenHam::fillTriangle() {
+	int A[3], B[3], C[3];
+	int top, bottom, left, right;
+	this->pixelNum = 1;
+	top = (*max_element(y, y + 3));
+	bottom = (*min_element(y, y + 3));
+	left = (*min_element(x, x + 3));
+	right = (*max_element(x, x + 3));
+	for (int i = 0; i < 3; i++) {
+		A[i] = y[(i + 1) % 3] - y[i % 3];
+		B[i] = -(x[(i + 1) % 3] - x[i % 3]);
+		C[i] = -(A[i] * x[i] + B[i] * y[i]);
+	}
+	for (int i = left; i <= right; i++) {
+		for (int j = top; j >= bottom; j--) {
+			bool in = true;
+			for (int k = 0; k < 3; k++) {
+				if (A[k] * i + B[k] * j + C[k] < 0) {
+					in = false;
+					break;
+				}
+			}
+			if (in) {
+				float arr[2] = { 0 };
+				arr[0] = (float)i / width;
+				arr[1] = (float)j / height;
+				unsigned int VAO, VBO;
+				glGenBuffers(1, &VBO);
+				glBindBuffer(GL_ARRAY_BUFFER, VBO);
+				glBufferData(GL_ARRAY_BUFFER, sizeof(arr), arr, GL_STATIC_DRAW);
+				glGenVertexArrays(1, &VAO);
+				glBindVertexArray(VAO);
+
+				glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+				glEnableVertexAttribArray(0);
+				glBindBuffer(GL_ARRAY_BUFFER, 0);
+				glBindVertexArray(0);
+
+				drawPoint(VAO);
+				glDeleteVertexArrays(1, &VAO);
+				glDeleteBuffers(1, &VBO);
+			}
+		}
+	}
+
 }
 void BresenHam::drawPoint(unsigned int VAO) {
 	

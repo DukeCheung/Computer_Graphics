@@ -21,13 +21,10 @@ public:
 	void drawTriangle();
 	void drawCircle();
 	void drawCircle(int);
+	void fillTriangle();
 	void drawPoint(unsigned int);
 	void bresenHamLine(int x0, int y0, int x1, int y1, int pointNum, int deltaX, int deltaY);
 	int bresenHamCircle(int, int, int);
 };
 
 #endif // !BRESENHAM
-
-
-
-
