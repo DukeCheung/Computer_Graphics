@@ -3,9 +3,9 @@
 using namespace std;
 
 Camera::Camera() {
-	Position = glm::vec3(0.0f, 0.0f, 0.0f);
-	Up = glm::vec3(0.0f, 0.0f, 0.0f);
-	Front = glm::vec3(0.0f, 0.0f, 0.0f);
+	Position = glm::vec3(0.0f, 0.0f, 3.0f);
+	Up = glm::vec3(0.0f, 1.0f, 0.0f);
+	Front = glm::vec3(0.0f, 0.0f, -1.0f);
 	zoom = 45.0f;
 	yaw = -90.0f;
 	pitch = 0.0f;

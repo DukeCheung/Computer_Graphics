@@ -281,7 +281,7 @@ void Projection(GLFWwindow *window, const unsigned int shaderProgram) {
 		model = glm::translate(model, glm::vec3(-1.5f, 0.5f, -1.5f));
 
 		//move the cube on the horizontal direction
-		//model = glm::translate(model, (float)speed*glm::vec3(0.01f, 0.0f, 0.0f));
+		model = glm::translate(model, (float)speed*glm::vec3(0.01f, 0.0f, 0.0f));
 		if (speed >= 300) {
 			direction = 1;
 		}
@@ -329,8 +329,8 @@ void Projection(GLFWwindow *window, const unsigned int shaderProgram) {
 			ImGui::SliderFloat("Right", &right, -400.0f, 400.0f);
 			ImGui::SliderFloat("Top", &top, -400.0f, 400.0f);
 			ImGui::SliderFloat("Bottom", &bottom, -400.0f, 400.0f);
-			ImGui::SliderFloat("Near", &nearPos, 0.1f, 100.0f);
-			ImGui::SliderFloat("Far", &farPos, 0.1f, 100.0f);
+			ImGui::SliderFloat("Near", &nearPos, -100.0f, 100.0f);
+			ImGui::SliderFloat("Far", &farPos, -100.0f, 100.0f);
 		}
 		else {
 			ImGui::SliderFloat("Perspective", &perspective, 0.0f, 100.0f);
@@ -382,7 +382,7 @@ void ViewChanging(GLFWwindow *window, const unsigned int shaderProgram) {
 
 	bool ImGui = true;
 	bool depthTest = false;
-	bool Orth_Pers = true;
+	bool Orth_Pers = false;
 	//initial radius and scale
 	float scale = 30.0f;
 	float radius = 10.0f;
