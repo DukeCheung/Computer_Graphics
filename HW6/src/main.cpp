@@ -27,8 +27,9 @@ const char *GouraudVertexSource = "#version 330 core\n"
 "uniform vec3 lightColor;"
 
 "uniform float ambientStrength;\n"
+"uniform float diffuseStrength;\n"
 "uniform float specularStrength;\n"
-"uniform int shinyStrength;\n"
+"uniform int reflectance;\n"
 
 "uniform mat4 model;\n"
 "uniform mat4 view;\n"
@@ -42,11 +43,11 @@ const char *GouraudVertexSource = "#version 330 core\n"
 "   vec3 ambient = ambientStrength * lightColor;\n"
 "   vec3 norm = normalize(Normal);\n"
 "   vec3 lightDir = normalize(lightPos - Position);\n"
-"   float diff = max(dot(norm, lightDir), 0.0);\n"
+"   float diff = max(dot(norm, lightDir), diffuseStrength);\n"
 "   vec3 diffuse = diff * lightColor;\n"
 "   vec3 viewDir = normalize(viewPos - Position);\n"
 "   vec3 reflectDir = reflect(-lightDir, norm);\n"
-"   float spec = pow(max(dot(viewDir, reflectDir), 0.0), shinyStrength);\n"
+"   float spec = pow(max(dot(viewDir, reflectDir), 0.0), reflectance);\n"
 "   vec3 specular = specularStrength * spec * lightColor;\n"
 "   LightingColor = ambient + diffuse + specular;\n"
 "}\0";
@@ -86,19 +87,20 @@ const char *PhongFragmentSource = "#version 330 core\n"
 "uniform vec3 objectColor;\n"
 
 "uniform float ambientStrength;\n"
+"uniform float diffuseStrength;\n"
 "uniform float specularStrength;\n"
-"uniform int shinyStrength;\n"
+"uniform int reflectance;\n"
 
 "void main()\n"
 "{\n"
 "   vec3 ambient = ambientStrength * lightColor;\n"
 "   vec3 norm = normalize(Normal);\n"
 "   vec3 lightDir = normalize(lightPos - FragPos);\n"
-"   float diff = max(dot(norm, lightDir), 0.0);\n"
+"   float diff = max(dot(norm, lightDir), diffuseStrength);\n"
 "   vec3 diffuse = diff * lightColor;\n"
 "   vec3 viewDir = normalize(viewPos - FragPos);\n"
 "   vec3 reflectDir = reflect(-lightDir, norm);\n"
-"   float spec = pow(max(dot(viewDir, reflectDir), 0.0), shinyStrength);\n"
+"   float spec = pow(max(dot(viewDir, reflectDir), 0.0), reflectance);\n"
 "   vec3 specular = specularStrength * spec * lightColor;\n"
 "   vec3 result = (ambient + diffuse + specular) * objectColor;\n"
 "   FragColor = vec4(result, 1.0);\n"
@@ -251,10 +253,12 @@ int main() {
 
 	bool ImGui = true;
 	bool Phong_Gouraud = true;
+	bool bonus = false;
 	float ambientStrength = 0.1;
+	float diffuseStrength = 0.0;
 	float specularStrength = 0.5;
-	int shinyStrength = 32;
-	float radius = 20.0f;
+	int reflectance = 32;
+	float radius = 3.0f;
 	glm::vec3 ObjectColor(1.0f, 0.5f, 0.31f);
 
 	while (!glfwWindowShouldClose(window)) {
@@ -275,7 +279,7 @@ int main() {
 		model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
 		glm::mat4 projection = glm::perspective(glm::radians(camera.getZoom()), (float)width / (float)height, 0.1f, 100.0f);
 		glm::mat4 view = camera.getViewMatrix();
-		glm::vec3 lightPos(5.0f, 4.0f, 0.0f);
+		glm::vec3 lightPos(radius, radius, 0.0f);
 
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
@@ -283,19 +287,28 @@ int main() {
 
 		ImGui::Begin("Edit Radius", &ImGui, ImGuiWindowFlags_MenuBar);
 		ImGui::Checkbox("Phong_Gouraud", &Phong_Gouraud);
+		ImGui::Checkbox("Bonus", &bonus);
 		ImGui::ColorEdit3("Color", (float*)&ObjectColor);
+		ImGui::SliderFloat("Radius", &radius, 3.0f, 10.0f);
 		ImGui::SliderFloat("Ambient", &ambientStrength, 0.0f, 1.0f);
+		ImGui::SliderFloat("Diffuse", &diffuseStrength, 0.0f, 5.0f);
 		ImGui::SliderFloat("Specular", &specularStrength, 0.0f, 1.0f);
-		ImGui::SliderInt("ShinyStrength", &shinyStrength, 4, 128);
+		ImGui::SliderInt("Reflectance", &reflectance, 2, 256);
 		ImGui::End();
 
-
-		float currentAngle = (float)glfwGetTime()*glm::radians(45.0f);
-		glm::mat4 lightModel = glm::rotate(model, currentAngle, glm::vec3(0.0f, 0.0f, 1.0f));
-	    lightModel = glm::translate(lightModel, glm::vec3(5.0f, 0.0f, 0.0f));
-		lightModel = glm::scale(lightModel, glm::vec3(0.2f));
-		lightPos.x = cos(currentAngle)*5.0f;
-		lightPos.y = sin(currentAngle)*5.0f;
+		glm::mat4 lightModel = model;
+		if (bonus) {
+			float currentAngle = (float)glfwGetTime()*glm::radians(45.0f);
+			lightModel = glm::rotate(model, currentAngle, glm::vec3(0.0f, 0.0f, 1.0f));
+			lightModel = glm::translate(lightModel, glm::vec3(radius, 0.0f, 0.0f));
+			lightModel = glm::scale(lightModel, glm::vec3(0.2f));
+			lightPos.x = cos(currentAngle)*radius;
+			lightPos.y = sin(currentAngle)*radius;
+		}
+		else {
+			lightModel = glm::translate(lightModel, lightPos);
+			lightModel = glm::scale(lightModel, glm::vec3(0.2f));
+		}
 
 		if (Phong_Gouraud) {
 			glUseProgram(PhongShader);
@@ -306,8 +319,9 @@ int main() {
 			glUniform3fv(glGetUniformLocation(PhongShader, "viewPos"), 1, &camera.getPosition()[0]);
 
 			glUniform1f(glGetUniformLocation(PhongShader, "ambientStrength"), ambientStrength);
+			glUniform1f(glGetUniformLocation(PhongShader, "diffuseStrength"), diffuseStrength);
 			glUniform1f(glGetUniformLocation(PhongShader, "specularStrength"), specularStrength);
-			glUniform1i(glGetUniformLocation(PhongShader, "shinyStrength"), shinyStrength);
+			glUniform1i(glGetUniformLocation(PhongShader, "reflectance"), reflectance);
 
 			glUniformMatrix4fv(glGetUniformLocation(PhongShader, "model"), 1, GL_FALSE, glm::value_ptr(model));
 			glUniformMatrix4fv(glGetUniformLocation(PhongShader, "view"), 1, GL_FALSE, &view[0][0]);
@@ -323,8 +337,9 @@ int main() {
 			glUniform3fv(glGetUniformLocation(GouraudShader, "viewPos"), 1, &camera.getPosition()[0]);
 
 			glUniform1f(glGetUniformLocation(GouraudShader, "ambientStrength"), ambientStrength);
+			glUniform1f(glGetUniformLocation(GouraudShader, "diffuseStrength"), diffuseStrength);
 			glUniform1f(glGetUniformLocation(GouraudShader, "specularStrength"), specularStrength);
-			glUniform1i(glGetUniformLocation(GouraudShader, "shinyStrength"), shinyStrength);
+			glUniform1i(glGetUniformLocation(GouraudShader, "reflectance"), reflectance);
 
 			glUniformMatrix4fv(glGetUniformLocation(GouraudShader, "model"), 1, GL_FALSE, &model[0][0]);
 			glUniformMatrix4fv(glGetUniformLocation(GouraudShader, "view"), 1, GL_FALSE, &view[0][0]);
