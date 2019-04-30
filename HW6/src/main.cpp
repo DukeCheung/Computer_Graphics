@@ -43,8 +43,8 @@ const char *GouraudVertexSource = "#version 330 core\n"
 "   vec3 ambient = ambientStrength * lightColor;\n"
 "   vec3 norm = normalize(Normal);\n"
 "   vec3 lightDir = normalize(lightPos - Position);\n"
-"   float diff = max(dot(norm, lightDir), diffuseStrength);\n"
-"   vec3 diffuse = diff * lightColor;\n"
+"   float diff = max(dot(norm, lightDir), 0.0);\n"
+"   vec3 diffuse = diffuseStrength * diff * lightColor;\n"
 "   vec3 viewDir = normalize(viewPos - Position);\n"
 "   vec3 reflectDir = reflect(-lightDir, norm);\n"
 "   float spec = pow(max(dot(viewDir, reflectDir), 0.0), reflectance);\n"
@@ -96,8 +96,8 @@ const char *PhongFragmentSource = "#version 330 core\n"
 "   vec3 ambient = ambientStrength * lightColor;\n"
 "   vec3 norm = normalize(Normal);\n"
 "   vec3 lightDir = normalize(lightPos - FragPos);\n"
-"   float diff = max(dot(norm, lightDir), diffuseStrength);\n"
-"   vec3 diffuse = diff * lightColor;\n"
+"   float diff = max(dot(norm, lightDir), 0.0);\n"
+"   vec3 diffuse = diffuseStrength * diff * lightColor;\n"
 "   vec3 viewDir = normalize(viewPos - FragPos);\n"
 "   vec3 reflectDir = reflect(-lightDir, norm);\n"
 "   float spec = pow(max(dot(viewDir, reflectDir), 0.0), reflectance);\n"
@@ -230,7 +230,6 @@ int main() {
 	   -2.0f,  2.0f, -2.0f, 0.0f, 1.0f, 0.0f,
 	};
 	unsigned int VAO, VBO;
-	
 	glGenBuffers(1, &VBO);
 	glGenVertexArrays(1, &VAO);
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
@@ -255,7 +254,7 @@ int main() {
 	bool Phong_Gouraud = true;
 	bool bonus = false;
 	float ambientStrength = 0.1;
-	float diffuseStrength = 0.0;
+	float diffuseStrength = 1.0;
 	float specularStrength = 0.5;
 	int reflectance = 32;
 	float radius = 3.0f;
@@ -291,7 +290,7 @@ int main() {
 		ImGui::ColorEdit3("Color", (float*)&ObjectColor);
 		ImGui::SliderFloat("Radius", &radius, 3.0f, 10.0f);
 		ImGui::SliderFloat("Ambient", &ambientStrength, 0.0f, 1.0f);
-		ImGui::SliderFloat("Diffuse", &diffuseStrength, 0.0f, 5.0f);
+		ImGui::SliderFloat("Diffuse", &diffuseStrength, 1.0f, 5.0f);
 		ImGui::SliderFloat("Specular", &specularStrength, 0.0f, 1.0f);
 		ImGui::SliderInt("Reflectance", &reflectance, 2, 256);
 		ImGui::End();
