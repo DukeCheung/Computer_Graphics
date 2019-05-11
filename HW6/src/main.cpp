@@ -440,7 +440,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
 	lastX = xpos;
 	lastY = ypos;
 
-	camera.rotate(xOffset*MOUSESPEED, yOffset*MOUSESPEED);
+	camera.rotate(yOffset*MOUSESPEED, xOffset*MOUSESPEED);
 }
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
 	camera.processZoom(yoffset);
