@@ -33,7 +33,7 @@ const char *depthFragmentShader = "#version 330 core\n"
 "   // gl_FragDepth = gl_FragCoord.z;\n"
 "}\n\0";
 
-const char *quadVertexShader = "#version 330 core\n"
+const char *textureVertexShader = "#version 330 core\n"
 "layout (location = 0) in vec3 aPos;\n"
 "layout(location = 1) in vec2 aTexCoords;\n"
 "out vec2 TexCoords;\n"
@@ -43,21 +43,22 @@ const char *quadVertexShader = "#version 330 core\n"
 "	gl_Position = vec4(aPos, 1.0);\n"
 "}\0";
 
-const char *quadFragmentShader = "#version 330 core\n"
+const char *textureFragmentShader = "#version 330 core\n"
 "out vec4 FragColor;\n"
 "in vec2 TexCoords;\n"
 "uniform sampler2D depthMap;\n"
-"uniform float near_plane;\n"
-"uniform float far_plane;\n"
+"uniform float nearPlane;\n"
+"uniform float farPlane;\n"
 "float LinearizeDepth(float depth)\n"
 "{\n"
-"	float z = depth * 2.0 - 1.0;\n"
-"	return (2.0 * near_plane * far_plane) / (far_plane + near_plane - z * (far_plane - near_plane));\n"
+"	float z = depth * 2.0f - 1.0f;\n"
+"	return (2.0f * nearPlane * farPlane) / (farPlane + nearPlane - z * (farPlane - nearPlane));\n"
 "}\n"
 "void main()\n"
 "{\n"
 "	float depthValue = texture(depthMap, TexCoords).r;\n"
-"	FragColor = vec4(vec3(depthValue), 1.0);\n"
+"   //FragColor = vec4(vec3(LinearizeDepth(depthValue) / farPlane), 1.0f);\n"
+"	FragColor = vec4(vec3(depthValue), 1.0f);\n"
 "}\n\0";
 
 const char *shadowVertexShader = "#version 330 core\n"
@@ -107,7 +108,7 @@ const char *shadowFragmentShader = "#version 330 core\n"
 "	float currentDepth = projCoords.z;\n"
 "	vec3 normal = normalize(fs_in.Normal);\n"
 "	vec3 lightDir = normalize(lightPos - fs_in.FragPos);\n"
-"	float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);\n"
+"	float bias = max(0.05f * (1.0f - dot(normal, lightDir)), 0.005f);\n"
 "	float shadow = 0.0;\n"
 "	vec2 texelSize = 1.0 / textureSize(shadowMap, 0);\n"
 "	for (int x = -1; x <= 1; ++x)\n"
@@ -168,13 +169,13 @@ void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 unsigned int createShader(const char *vertexShader, const char *fragment);
 void renderScene(unsigned int shader);
 void renderCube();
-void renderQuad();
+void renderTexture();
 unsigned int loadTexture(char const * path);
 
 GLuint cubeVAO = 0;
 GLuint cubeVBO = 0;
-GLuint quadVAO = 0;
-GLuint quadVBO;
+GLuint textureVAO = 0;
+GLuint textureVBO;
 unsigned int planeVAO;
 
 int main() {
@@ -183,7 +184,7 @@ int main() {
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-	GLFWwindow *window = glfwCreateWindow(800, 800, "Cube", NULL, NULL);
+	GLFWwindow *window = glfwCreateWindow(800, 800, "Shadow", NULL, NULL);
 	if (window == NULL) {
 		cout << "´´½¨GLFWÊ§°Ü£¡" << endl;
 		glfwTerminate();
@@ -196,15 +197,15 @@ int main() {
 		return -1;
 	}
 	glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-	glfwSetCursorPosCallback(window, mouse_callback);
-	glfwSetScrollCallback(window, scroll_callback);
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+	//glfwSetCursorPosCallback(window, mouse_callback);
+	//glfwSetScrollCallback(window, scroll_callback);
+	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
 
-	unsigned int simpleDepthShader, shadowShader, quadShader;
+	unsigned int simpleDepthShader, shadowShader, textureShader;
 	simpleDepthShader = createShader(depthVertexShader, depthFragmentShader);
 	shadowShader = createShader(shadowVertexShader, shadowFragmentShader);
-	quadShader = createShader(quadVertexShader, quadFragmentShader);
+	textureShader = createShader(textureVertexShader, textureFragmentShader);
 	float planeVertices[] = {
 		// positions            // normals         // texcoords
 		 25.0f, -0.5f,  25.0f,  0.0f, 1.0f, 0.0f,  25.0f,  0.0f,
@@ -253,34 +254,53 @@ int main() {
 	glReadBuffer(GL_NONE);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-
 	glUseProgram(shadowShader);
 	glUniform1i(glGetUniformLocation(shadowShader, "diffuseTexture"), 0);
 	glUniform1i(glGetUniformLocation(shadowShader, "shadowMap"), 1);
-	glUseProgram(quadShader);
-	glUniform1i(glGetUniformLocation(quadShader, "depthMap"), 0);
+	glUseProgram(textureShader);
+	glUniform1i(glGetUniformLocation(textureShader, "depthMap"), 0);
 
 	glm::vec3 lightPos(-2.0f, 4.0f, -1.0f);
+	//glm::vec3 lightPos(0.0f, 3.0f, 0.0f);
 
+	//ImGui
+	gladLoadGL();
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	ImGui::StyleColorsDark();
+	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplOpenGL3_Init(glsl_version);
+	bool ImGui = true;
+	bool Pers_Orth = true;
 
 	while (!glfwWindowShouldClose(window)) {
 
 		float currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
-
 		processInput(window);
-
-		//background color
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-		//depth test
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		glEnable(GL_DEPTH_TEST);
 
-		GLfloat nearPlane = 1.0f, farPlane = 7.5f;
-		glm::mat4 lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f,
-			nearPlane, farPlane);
-		glm::mat4 lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+		ImGui::Begin("Shadow Mapping", &ImGui, ImGuiWindowFlags_MenuBar);
+		ImGui::Checkbox("Pers_Orth", &Pers_Orth);
+		ImGui::End();
+
+		GLfloat nearPlane = 1.0f, farPlane = 10.0f;
+		glm::mat4 lightProjection;
+		if (Pers_Orth) {
+			lightProjection = glm::perspective(glm::radians(camera.getZoom()), (float)width / (float)height, nearPlane, farPlane);
+		}
+		else {
+			lightProjection = glm::ortho(-10.0f, 10.0f, -10.0f, 10.0f, nearPlane, farPlane);
+		}
+		
+		glm::mat4 lightView = glm::lookAt(lightPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		glm::mat4 lightSpaceMatrix = lightProjection * lightView;
 
 		glUseProgram(simpleDepthShader);
@@ -293,9 +313,6 @@ int main() {
 		glBindTexture(GL_TEXTURE_2D, texture);
 		renderScene(simpleDepthShader);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		
-		glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -304,7 +321,6 @@ int main() {
 		glm::mat4 view = camera.getViewMatrix();
 		glUniformMatrix4fv(glGetUniformLocation(shadowShader, "projection"), 1, GL_FALSE, &projection[0][0]);
 		glUniformMatrix4fv(glGetUniformLocation(shadowShader, "view"), 1, GL_FALSE, &view[0][0]);
-		
 		glUniform3fv(glGetUniformLocation(shadowShader, "viewPos"), 1, &camera.getPosition()[0]);
 		glUniform3fv(glGetUniformLocation(shadowShader, "lightPos"), 1, &lightPos[0]);
 		glUniformMatrix4fv(glGetUniformLocation(shadowShader, "lightSpaceMatrix"), 1, GL_FALSE, &lightSpaceMatrix[0][0]);
@@ -314,15 +330,22 @@ int main() {
 		glBindTexture(GL_TEXTURE_2D, depthMap);
 		renderScene(shadowShader);
 
-		glUseProgram(quadShader);
-		glUniform1f(glGetUniformLocation(quadShader, "near_plane"), nearPlane);
-		glUniform1f(glGetUniformLocation(quadShader, "far_plane"), farPlane);
+		glUseProgram(textureShader);
+		glUniform1f(glGetUniformLocation(textureShader, "nearPlane"), nearPlane);
+		glUniform1f(glGetUniformLocation(textureShader, "farPlane"), farPlane);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, depthMap);
 		
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	}
+
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
 
 	glDeleteVertexArrays(1, &planeVAO);
 	glDeleteBuffers(1, &planeVBO);
@@ -412,30 +435,30 @@ void renderScene(unsigned int shader)
 	glBindVertexArray(planeVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 
-	// Cubes
+	// Cube 1
 	model = glm::mat4(1.0f);
-	model = glm::translate(model, glm::vec3(0.0f, 1.5f, 0.0f));
+	model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f));
 	model = glm::scale(model, glm::vec3(0.5f));
 	glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, glm::value_ptr(model));
 	renderCube();
 
+	// Cube 2
 	model = glm::mat4(1.0f);
-	model = glm::translate(model, glm::vec3(2.0f, 0.0f, 1.0f));
+	model = glm::translate(model, glm::vec3(1.0f, 0.0f, 0.0f));
 	model = glm::scale(model, glm::vec3(0.5f));
 	glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, glm::value_ptr(model));
 	renderCube();
 
+	// Cube 3
 	model = glm::mat4(1.0f);
-	model = glm::translate(model, glm::vec3(-1.0f, 0.0f, 2.0f));
-	model = glm::rotate(model, 60.0f, glm::normalize(glm::vec3(1.0f, 0.0f, 1.0f)));
-	model = glm::scale(model, glm::vec3(0.25f));
+	model = glm::translate(model, glm::vec3(-1.0f, 0.0f, 0.0f));
+	model = glm::scale(model, glm::vec3(0.5f));
 	glUniformMatrix4fv(glGetUniformLocation(shader, "model"), 1, GL_FALSE, glm::value_ptr(model));
 	renderCube();
 }
 
 void renderCube()
 {
-	// Initialize (if necessary)
 	if (cubeVAO == 0)
 	{
 		GLfloat vertices[] = {
@@ -484,10 +507,8 @@ void renderCube()
 		};
 		glGenVertexArrays(1, &cubeVAO);
 		glGenBuffers(1, &cubeVBO);
-		// fill buffer
 		glBindBuffer(GL_ARRAY_BUFFER, cubeVBO);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-		// link vertex attributes
 		glBindVertexArray(cubeVAO);
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
@@ -498,34 +519,33 @@ void renderCube()
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindVertexArray(0);
 	}
-	// Render Cube
+
 	glBindVertexArray(cubeVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 36);
 	glBindVertexArray(0);
 }
-void renderQuad()
+void renderTexture()
 {
-	if (quadVAO == 0)
+	if (textureVAO == 0)
 	{
 		float quadVertices[] = {
-			// positions        // texture Coords
 			-1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
 			-1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
 			 1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
 			 1.0f, -1.0f, 0.0f, 1.0f, 0.0f,
 		};
-		// setup plane VAO
-		glGenVertexArrays(1, &quadVAO);
-		glGenBuffers(1, &quadVBO);
-		glBindVertexArray(quadVAO);
-		glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+
+		glGenVertexArrays(1, &textureVAO);
+		glGenBuffers(1, &textureVBO);
+		glBindVertexArray(textureVAO);
+		glBindBuffer(GL_ARRAY_BUFFER, textureVBO);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
 		glEnableVertexAttribArray(1);
 		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 	}
-	glBindVertexArray(quadVAO);
+	glBindVertexArray(textureVAO);
 	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	glBindVertexArray(0);
 }
@@ -533,7 +553,6 @@ unsigned int loadTexture(char const * path)
 {
 	unsigned int textureID;
 	glGenTextures(1, &textureID);
-
 	int width, height, nrComponents;
 	unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
 	if (data)
@@ -550,11 +569,10 @@ unsigned int loadTexture(char const * path)
 		glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
 		glGenerateMipmap(GL_TEXTURE_2D);
 
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT); // for this tutorial: use GL_CLAMP_TO_EDGE to prevent semi-transparent borders. Due to interpolation it takes texels from next repeat 
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, format == GL_RGBA ? GL_CLAMP_TO_EDGE : GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
 		stbi_image_free(data);
 	}
 	else
@@ -562,6 +580,5 @@ unsigned int loadTexture(char const * path)
 		cout << "Texture failed to load at path: " << path << std::endl;
 		stbi_image_free(data);
 	}
-
 	return textureID;
 }
