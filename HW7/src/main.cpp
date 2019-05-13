@@ -40,7 +40,7 @@ const char *textureVertexShader = "#version 330 core\n"
 "void main()\n"
 "{\n"
 "	TexCoords = aTexCoords;\n"
-"	gl_Position = vec4(aPos, 1.0);\n"
+"	gl_Position = vec4(aPos, 1.0f);\n"
 "}\0";
 
 const char *textureFragmentShader = "#version 330 core\n"
@@ -201,11 +201,6 @@ int main() {
 	//glfwSetScrollCallback(window, scroll_callback);
 	//glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-
-	unsigned int simpleDepthShader, shadowShader, textureShader;
-	simpleDepthShader = createShader(depthVertexShader, depthFragmentShader);
-	shadowShader = createShader(shadowVertexShader, shadowFragmentShader);
-	textureShader = createShader(textureVertexShader, textureFragmentShader);
 	float planeVertices[] = {
 		// positions            // normals         // texcoords
 		 25.0f, -0.5f,  25.0f,  0.0f, 1.0f, 0.0f,  25.0f,  0.0f,
@@ -230,13 +225,10 @@ int main() {
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
 	glBindVertexArray(0);
 
-	unsigned int texture = loadTexture("wood.png");
-
-	GLuint depthMapFBO;
+	GLuint depthMapFBO, depthMap;
 	glGenFramebuffers(1, &depthMapFBO);
 	const GLuint SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
 
-	GLuint depthMap;
 	glGenTextures(1, &depthMap);
 	glBindTexture(GL_TEXTURE_2D, depthMap);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, SHADOW_WIDTH, SHADOW_HEIGHT, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
@@ -253,6 +245,12 @@ int main() {
 	glDrawBuffer(GL_NONE);
 	glReadBuffer(GL_NONE);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	unsigned int texture = loadTexture("wood.png");
+	unsigned int simpleDepthShader, shadowShader, textureShader;
+	simpleDepthShader = createShader(depthVertexShader, depthFragmentShader);
+	shadowShader = createShader(shadowVertexShader, shadowFragmentShader);
+	textureShader = createShader(textureVertexShader, textureFragmentShader);
 
 	glUseProgram(shadowShader);
 	glUniform1i(glGetUniformLocation(shadowShader, "diffuseTexture"), 0);
@@ -528,7 +526,7 @@ void renderTexture()
 {
 	if (textureVAO == 0)
 	{
-		float quadVertices[] = {
+		float textureVertices[] = {
 			-1.0f,  1.0f, 0.0f, 0.0f, 1.0f,
 			-1.0f, -1.0f, 0.0f, 0.0f, 0.0f,
 			 1.0f,  1.0f, 0.0f, 1.0f, 1.0f,
@@ -539,7 +537,7 @@ void renderTexture()
 		glGenBuffers(1, &textureVBO);
 		glBindVertexArray(textureVAO);
 		glBindBuffer(GL_ARRAY_BUFFER, textureVBO);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(textureVertices), &textureVertices, GL_STATIC_DRAW);
 		glEnableVertexAttribArray(0);
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
 		glEnableVertexAttribArray(1);
