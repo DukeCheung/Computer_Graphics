@@ -13,6 +13,7 @@
 #include <imgui/imstb_truetype.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_opengl3.h>
+#include <windows.h>
 
 using namespace std;
 
@@ -21,6 +22,7 @@ const int height = 800;
 float currentX = 0.0f;
 float currentY = 0.0f;
 float vertices[200];
+float bonusVertices[200];
 float qVertices[4];
 int pointNum = 0;
 
@@ -33,6 +35,7 @@ void renderLine(unsigned int VAO);
 int factorial(int n);
 float binomialCoef(int n, int i);
 void renderBezierCurve();
+void bonus();
 
 int main() {
 	glfwInit();
@@ -79,6 +82,7 @@ int main() {
 		renderPoint(VAO);
 		renderLine(VAO);
 		renderBezierCurve();
+		bonus();
 		
 		
 		glfwSwapBuffers(window);
@@ -109,7 +113,9 @@ void mouseCallback(GLFWwindow* window, int button, int action, int mods) {
 			pointNum++;
 			break;
 		case GLFW_MOUSE_BUTTON_RIGHT:
-			pointNum--;
+			if (pointNum > 0) {
+				pointNum--;
+			}
 			break;
 		default:
 			break;
@@ -174,5 +180,37 @@ void renderBezierCurve() {
 		qVertices[1] = qVertices[3];
 		qVertices[2] = 0.0f;
 		qVertices[3] = 0.0f;
+	}
+}
+
+void bonus() {
+	
+	for (int i = 0; i < 200; i++) {
+		bonusVertices[i] = vertices[i];
+	}
+	for (float t = 0.0f; t < 1.0f; t += 0.02f) {
+		for (int i = pointNum; i > 2; i--) {
+			for (int j = 0; j < i - 1; j++) {
+				bonusVertices[j * 2] = bonusVertices[j * 2] * (1 - t) + bonusVertices[(j + 1) * 2] * t;
+				bonusVertices[j * 2 + 1] = bonusVertices[j * 2 + 1] * (1 - t) + bonusVertices[(j + 1) * 2 + 1] * t;
+			}
+			unsigned int qVAO, qVBO;
+			glGenBuffers(1, &qVBO);
+			glBindBuffer(GL_ARRAY_BUFFER, qVBO);
+			glBufferData(GL_ARRAY_BUFFER, sizeof(bonusVertices), bonusVertices, GL_STATIC_DRAW);
+			glGenVertexArrays(1, &qVAO);
+			glBindVertexArray(qVAO);
+
+			glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+			glEnableVertexAttribArray(0);
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+			glBindVertexArray(0);
+
+			glBindVertexArray(qVAO);
+			glDrawArrays(GL_LINE_STRIP, 0, i);
+
+			glDeleteVertexArrays(1, &qVAO);
+			glDeleteBuffers(1, &qVBO);
+		}
 	}
 }
